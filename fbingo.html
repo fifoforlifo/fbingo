@@ -1,0 +1,203 @@
+<html>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <head>
+    <title>Food Randomizer</title>
+    <style id="ReportStyle">
+      table {
+        font-size: 14px;
+        margin: 0 auto;
+        border-collapse: collapse;
+        border: 1px solid black;
+      }
+      table th {
+        margin: 0 auto;
+        border-collapse: collapse;
+        border: 1px solid black;
+      }
+      table td {
+        margin: 0 auto;
+        border-collapse: collapse;
+        border: 1px solid black;
+      }
+      table tbody tr td {
+        margin: 0 auto;
+        border-collapse: collapse;
+        border: 1px solid black;
+      }
+      .ca {
+        text-align: center;
+      }
+      .la {
+        text-align: left;
+      }
+      .ra {
+        text-align: right;
+      }
+    </style>
+
+    <script type="text/JavaScript">
+    </script>
+  </head>
+
+  <body>
+    <noscript>
+      <p>Warning: enable javascript to get tooltips</span>
+    </noscript>
+
+    <table style="display: inline-block; border: 1px solid;">
+      <thead>
+        <tr>
+          <th colspan="6">Food Bingo</th>
+        </tr>
+        <tr id="bingo_columns">
+        </tr>
+      </thead>
+      <tbody id="bingo_tbody">
+      </tbody>
+    </table>
+
+    <script>
+      // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
+      function xmur3(str) {
+          for(var i = 0, h = 1779033703 ^ str.length; i < str.length; i++)
+              h = Math.imul(h ^ str.charCodeAt(i), 3432918353),
+              h = h << 13 | h >>> 19;
+          return function() {
+              h = Math.imul(h ^ h >>> 16, 2246822507);
+              h = Math.imul(h ^ h >>> 13, 3266489909);
+              return ((h ^= h >>> 16) >>> 0) / 4294967296.0;
+          }
+      }
+
+      // Main logic
+      class Params {
+        constructor() {
+          let urlParams = new URLSearchParams(window.location.search);
+
+          let params = this;
+          params.seed = urlParams.get('seed') || 'PRNG';
+          params.ingredientColorProbability = urlParams.get('icp') || 0.3;
+        }
+      }
+
+      function genTable(ingredientNames, dishProperties) {
+        colors = {
+          'B': 'blue or purple',
+          'G': 'green',
+          'O': 'orange',
+          'W': 'white',
+        };
+
+        let params = new Params();
+
+        class Ingredient {
+          constructor(name, colorMask) {
+            let ing = this;
+            ing.name = name;
+            ing.colorMask = colorMask;
+          }
+
+          generateTileContent(prng) {
+            let ing = this;
+            if (!ing.colorMask) {
+              return 'Ingredient: ' + ing.name;
+            }
+
+            let colorProb = prng();
+            if (colorProb < params.ingredientColorProbability) {
+              let colorIdx = Math.floor((colorProb / params.ingredientColorProbability) * ing.colorMask.length);
+              let colorChar = ing.colorMask[colorIdx];
+              let colorName = colors[colorChar];
+              return 'Ingredient: ' + ing.name + '<br>Color: ' + colorName;
+            } else {
+              return 'Ingredient: ' + ing.name;
+            }
+          }
+        }
+
+        class State {
+          constructor() {
+
+            let state = this;
+            state.items = [];
+            state.prng = xmur3(params.seed);
+            for (const ingredientName of ingredientNames) {
+              let ing = new Ingredient(ingredientName, 'BGOW');
+              state.items.push(ing);
+            }
+
+            // TODO: add other types of entities
+
+            state.tileContents = [];
+            for (let ii = 0; ii < 25; ++ii) {
+              if (!state.items.length) {
+                state.tileContents.push('Wildcard');
+              } else {
+                let itemIdx = Math.floor(state.prng() * state.items.length);
+                let item = state.items[itemIdx];
+                state.items.splice(itemIdx, 1);
+                let tileContent = item.generateTileContent(state.prng);
+                state.tileContents.push(tileContent);
+              }
+            }
+            // done
+          }
+        }
+
+        state = new State();
+
+        function addCell(trow, classes, text) {
+          if (text == undefined) {
+            text = '';
+          }
+          var td = document.createElement('td');
+          td.setAttribute('class', classes);
+          td.innerHTML = text;
+          trow.appendChild(td);
+        }
+
+        // column headers
+        let bingo_columns = document.getElementById('bingo_columns');
+        addCell(bingo_columns, "", '');
+        for (let ii = 0; ii < 5; ++ii) {
+          addCell(bingo_columns, "ca", String.fromCharCode(0x41 + ii));
+        }
+        // rows
+        let bingo_tbody = document.getElementById('bingo_tbody');
+        for (var rowIdx = 0; rowIdx < 5; ++rowIdx) {
+          let trow = document.createElement('tr');
+          addCell(trow, "ca", String.fromCharCode(0x30 + rowIdx));
+          for (var colIdx = 0; colIdx < 5; ++colIdx) {
+            let tileContent = state.tileContents.pop();
+            addCell(trow, "ca", tileContent);
+          }
+          bingo_tbody.appendChild(trow);
+        }
+      }
+
+      ingredientNames = [
+        'Shellfish',
+        'Flour',
+        'Flower',
+        'Tinned meat',
+        'Rice in the name',
+        'Fresh Herb',
+        'Dried Herb',
+        'Coffee or Tea',
+        'Chocolate',
+        'Frozen Veg',
+        'Canned Veg',
+        'Dried Veg',
+      ];
+
+      genTable(ingredientNames);
+    </script>
+
+  </body>
+
+</html>
+
+
+
