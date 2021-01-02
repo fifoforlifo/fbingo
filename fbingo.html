@@ -43,20 +43,25 @@
 
   <body>
     <noscript>
-      <p>Warning: enable javascript to get tooltips</span>
+      <p>Enable javascript to get a result.</span>
     </noscript>
 
-    <table style="display: inline-block; border: 1px solid;">
-      <thead>
-        <tr>
-          <th colspan="6">Food Bingo</th>
-        </tr>
-        <tr id="bingo_columns">
-        </tr>
-      </thead>
-      <tbody id="bingo_tbody">
-      </tbody>
-    </table>
+    <div id="main_area">
+      <table style="display: inline-block; border: 1px solid;">
+        <thead>
+          <tr>
+            <th colspan="6">Food Bingo</th>
+          </tr>
+          <tr id="bingo_columns">
+          </tr>
+        </thead>
+        <tbody id="bingo_tbody">
+        </tbody>
+      </table>
+    </div>
+
+    <br>
+    <b>Seed: </b><span id="seed"></span>
 
     <script>
       // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
@@ -77,20 +82,36 @@
           let urlParams = new URLSearchParams(window.location.search);
 
           let params = this;
-          params.seed = urlParams.get('seed') || 'PRNG';
+          params.seed = urlParams.get('seed');
+          if (!params.seed) {
+            params.seed =(new Date()).toUTCString();
+            // NOTE: below does not work from file:// ("security error")
+            // TODO: the Date probably needs URL encoding.
+            //let seedString = 'seed=' + params.seed;
+            //let url = window.location.href;
+            //if (window.location.href.includes('?')) {
+            //  url += '?' + seedString;
+            //} else {
+            //  url += '&' + seedString;
+            //}
+            //window.history.pushState(seedString, 'Food Randomizer', url);
+          }
           params.ingredientColorProbability = urlParams.get('icp') || 0.3;
+          params.orDescriptionProbability = urlParams.get('itnod') || 0.7;
         }
       }
 
-      function genTable(ingredientNames, dishProperties) {
+      function genTable(ingredientNames, techniqueNames, dishContentNames, itnodNames) {
         colors = {
-          'B': 'blue or purple',
+          'B': 'brown',
           'G': 'green',
           'O': 'orange',
+          'P': 'blue or purple',
           'W': 'white',
         };
 
         let params = new Params();
+        document.getElementById('seed').innerHTML = params.seed;
 
         class Ingredient {
           constructor(name, colorMask) {
@@ -110,10 +131,53 @@
               let colorIdx = Math.floor((colorProb / params.ingredientColorProbability) * ing.colorMask.length);
               let colorChar = ing.colorMask[colorIdx];
               let colorName = colors[colorChar];
-              return 'Ingredient: ' + ing.name + '<br>Color: ' + colorName;
+              return 'Ingredient: ' + '<b>' + ing.name + '<br>Color: ' + colorName + '</b>';
             } else {
-              return 'Ingredient: ' + ing.name;
+              return 'Ingredient: ' + '<b>' + ing.name + '</b>';
             }
+          }
+        }
+
+        class Technique {
+          constructor(name) {
+            let tech = this;
+            tech.name = name;
+          }
+
+          generateTileContent(prng) {
+            let tech = this;
+            return 'Technique: ' + '<b>' + tech.name + '</b>';
+          }
+        }
+
+        class DishContent {
+          constructor(name) {
+            let dish = this;
+            dish.name = name;
+          }
+
+          generateTileContent(prng) {
+            let dish = this;
+            return 'Dish: ' + '<b>' + dish.name + '</b>';
+          }
+        }
+
+        class InTheNameOrDesc {
+          constructor(name) {
+            let itnod = this;
+            itnod.name = name;
+          }
+
+          generateTileContent(prng) {
+            let itnod = this;
+
+            let orDescProbability = prng();
+            let suffix = ' in the name';
+            if (orDescProbability < params.orDescriptionProbability) {
+              suffix += ' or description';
+            }
+
+            return '<b>' + itnod.name + '</b>' + suffix;
           }
         }
 
@@ -123,12 +187,30 @@
             let state = this;
             state.items = [];
             state.prng = xmur3(params.seed);
+
             for (const ingredientName of ingredientNames) {
-              let ing = new Ingredient(ingredientName, 'BGOW');
+              let ing = new Ingredient(ingredientName, 'BGOPW');
               state.items.push(ing);
             }
 
-            // TODO: add other types of entities
+            for (const techniqueName of techniqueNames) {
+              let tech = new Technique(techniqueName);
+              state.items.push(tech);
+            }
+
+            for (const dishContentName of dishContentNames) {
+              let dish = new DishContent(dishContentName);
+              state.items.push(dish);
+            }
+
+            for (const itnodName of itnodNames) {
+              let itnod = new InTheNameOrDesc(itnodName);
+              state.items.push(itnod);
+            }
+
+            //
+            // add other entity types here
+            //
 
             state.tileContents = [];
             for (let ii = 0; ii < 25; ++ii) {
@@ -182,7 +264,6 @@
         'Flour',
         'Flower',
         'Tinned meat',
-        'Rice in the name',
         'Fresh Herb',
         'Dried Herb',
         'Coffee or Tea',
@@ -190,9 +271,86 @@
         'Frozen Veg',
         'Canned Veg',
         'Dried Veg',
+        'Fried',
+        'Sour',
+        'Pickled',
+        'Pickled, non-cucumber',
+        'Fermented',
+        'Raw Fermented',
+        'Pounded',
+        'Browned',
+        'Melted',
+        'Softened',
+        'Velvety',
+        'Breaded',
+        'Stuffed',
+        'Peeled',
+        'Umami',
+        'Whisked',
+        'Micro-planed',
+        'Mashed',
+        'Noodle',
+        'Diced',
+        'Grated',
+        'Ground',
+        'Creamy',
+        'Juiced',
+        'Gelatinous',
+        'Root or Rhizome',
+        'Hot Sauce',
+        'Mustard or Horseradish',
+        'Cutlet',
+        'Paste',
+        'Butter',
       ];
 
-      genTable(ingredientNames);
+      techniqueNames = [
+        'Boiled',
+        'Boiled in Water',
+        'Reduction',
+        'Steamed',
+        'Baked',
+        'Braised',
+        'Fried',
+        'Oven Roasted',
+        'Broiled',
+        'Seared',
+        'Placed directly on burner',
+        'Grilled',
+        'Griddled',
+        'Air Fried',
+        'Instant Pot',
+        'Microwaved',
+        'Food Processor',
+        'Blender',
+        'Rolling Pin',
+        'Matchstick',
+        'Smoked',
+        'Crimped',
+        'Wrapped',
+        'Flambéed',
+        'Emulsion',
+      ];
+
+      dishContentNames = [
+        'has Fried egg topper',
+        'has Poached egg topper',
+        'is One Pot Dish',
+        'is One Pan Dish',
+        'is Allium-Free',
+        'has 1-1-1 Measurements',
+      ];
+      
+      itnodNames = [
+        'Dip',
+        'Caramel',
+        'Roti',
+        'Crust',
+        'Casserole',
+        'Rice',
+      ];
+
+      genTable(ingredientNames, techniqueNames, dishContentNames, itnodNames);
     </script>
 
   </body>
